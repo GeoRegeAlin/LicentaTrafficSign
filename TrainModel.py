@@ -14,6 +14,8 @@ import glob
 
 
 def preprocess_img(img):
+    hsv = color.rgb2hsv(img)
+    img = color.hsv2rgb(hsv)
     img = transform.resize(img, (48, 48))
     img = np.rollaxis(img, -1)
     return img
@@ -21,11 +23,11 @@ def preprocess_img(img):
 def get_class(img_path):
     return int(img_path.split('\\')[-2])
 
-root_dir = 'GTSRB/Training/images/'
+img_dir = 'GTSRB/Training/images/'
 imgs = []
 labels = []
 
-all_img_paths = glob.glob(os.path.join(root_dir, '*/*.ppm'))
+all_img_paths = glob.glob(os.path.join(img_dir, '*/*.ppm'))
 np.random.shuffle(all_img_paths)
 for img_path in all_img_paths:
     img = preprocess_img(io.imread(img_path))
@@ -34,7 +36,6 @@ for img_path in all_img_paths:
     labels.append(label)
 
 X = np.array(imgs, dtype='float32')
-# Make one hot targets
 Y = np.eye(43, dtype='uint8')[labels]
 
 def cnn_model():
@@ -62,22 +63,22 @@ def cnn_model():
 
 
 model = cnn_model()
-plot_model(model, to_file='convolutional_neural_network.png')
 sgd = optimizers.SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
 model.compile(loss='categorical_crossentropy',
               optimizer=sgd,
               metrics=['accuracy'])
 
-def lr_schedule(epoch):
+def LRS(epoch):
     return 0.01 * (0.01 ** int(epoch / 10))
 
 batch_size = 50
 epochs = 10
+split_data=0.2
 
 model.fit(X, Y,
           batch_size=batch_size,
           epochs=epochs,
-          validation_split=0.2,
-          callbacks=[LearningRateScheduler(lr_schedule),
-                     ModelCheckpoint('model.h5', save_best_only=True)]
+          validation_split=split_data,
+          callbacks=[LearningRateScheduler(LRS),
+                     ModelCheckpoint('CNNmodel.h5', save_best_only=True)]
           )
